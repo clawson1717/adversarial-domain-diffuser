@@ -8,15 +8,40 @@ A domain-specific agentic framework that uses Adversarial Question Generation to
 - `tests/`: Unit and integration tests.
 - `data/`: Directory for synthetic samples and datasets.
 
-## Getting Started
+## Usage
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+The project provides a comprehensive CLI for running the adversarial loop and evaluating performance across domains.
 
-## Concept
+### Running the Adversarial Loop
 
-This project implements a multi-agent framework focused on:
-1. **Adversarial Question Generation**: Identifying gaps in model comprehension.
-2. **Online Multi-Agent Diffusion Policies**: Coordinating complex reasoning tasks across multiple agents.
+To run a basic adversarial loop with default settings:
+```bash
+python -m src.main run --query "How do we unify physics?" --iterations 3 --visualize
+```
+
+Options:
+- `--query`: The initial problem statement or question.
+- `--expert-reference`: The target expert perspective.
+- `--iterations`: Number of refinement iterations (default: 3).
+- `--visualize`: Display a terminal-based progress chart.
+- `--plot-output`: Save a visualization plot (e.g., `results.png`).
+
+### Running Domain Evaluation
+
+To run benchmarks across specific domains (e.g., LegalBench, MedicalQA):
+```bash
+python -m src.main eval --domain MedicalQA --visualize
+```
+
+Options:
+- `--domain`: Specific domain to evaluate (runs all if omitted).
+- `--iterations`: Iterations per loop in the evaluation.
+- `--visualize`: Display summary tables and charts.
+- `--plot-output`: Save evaluation summary plots.
+
+## Visualization
+
+The framework supports real-time progress tracking using `rich` and post-run visualizations:
+- **Terminal Charts**: ASCII-based gap-closing visualization.
+- **Summary Tables**: Formatted results for agents and evaluation metrics.
+- **Exportable Plots**: Matplotlib-based charts for research reporting.
