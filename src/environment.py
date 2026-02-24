@@ -1,17 +1,24 @@
 import logging
 from typing import List, Dict, Any, Optional
 from src.reasoning_agent import DomainReasoningAgent
+from src.omad import OMADOrchestrator
 
 class AgentEnvironment:
     """
     A simulated environment for multiple reasoning agents to interact.
     Uses a blackboard architecture where agents can share their reasoning.
+    Now supports OMAD coordination.
     """
 
-    def __init__(self):
+    def __init__(self, orchestrator: Optional[OMADOrchestrator] = None):
         self.agents: List[DomainReasoningAgent] = []
         self.blackboard: List[Dict[str, Any]] = []
+        self.orchestrator = orchestrator
         self.logger = logging.getLogger(__name__)
+
+    def set_orchestrator(self, orchestrator: OMADOrchestrator):
+        """Sets the OMAD orchestrator for the environment."""
+        self.orchestrator = orchestrator
 
     def register_agent(self, agent: DomainReasoningAgent):
         """Adds an agent to the environment."""
@@ -36,11 +43,21 @@ class AgentEnvironment:
         """
         Runs a multi-agent reasoning cycle.
         Agents iteratively refine their answers based on shared information.
+        If an orchestrator is present, it uses OMAD to coordinate trajectories.
         """
         self.blackboard = []  # Clear blackboard for a new query
         
+        coordination_history = []
+
         for i in range(iterations):
             self.logger.info(f"Starting iteration {i+1}")
+            
+            # If we have an orchestrator, perform a coordination step
+            if self.orchestrator:
+                coord_result = self.orchestrator.step(query)
+                coordination_history.append(coord_result)
+                self.logger.info("OMAD coordination step completed.")
+
             for agent in self.agents:
                 # In a real scenario, we might pass the blackboard content to the agent
                 # For now, let's simulate the interaction by including blackboard in the query if not empty
@@ -56,5 +73,6 @@ class AgentEnvironment:
         return {
             "query": query,
             "responses": results,
-            "blackboard_history": self.blackboard
+            "blackboard_history": self.blackboard,
+            "coordination_history": coordination_history
         }
