@@ -2,6 +2,7 @@ import numpy as np
 import logging
 from typing import List, Dict, Any, Optional
 from src.diffusion import DiffusionPolicy
+from src.grouping import EmbodimentGrouper
 
 class OMADOrchestrator:
     """
@@ -9,17 +10,26 @@ class OMADOrchestrator:
     Manages coordination between multiple DiffusionPolicy agents using
     entropy-augmented objectives and joint distributional value functions.
     """
-    def __init__(self, agents: Dict[str, DiffusionPolicy], alpha: float = 0.1):
+    def __init__(self, agents: Dict[str, DiffusionPolicy], alpha: float = 0.1, agent_metadata: Optional[List[Dict[str, Any]]] = None):
         """
         Initialize the OMAD Orchestrator.
         
         Args:
             agents: A dictionary mapping agent IDs to their DiffusionPolicy.
             alpha: Entropy augmentation coefficient (exploration bonus).
+            agent_metadata: Optional metadata for each agent used for grouping.
         """
         self.agents = agents
         self.alpha = alpha
         self.logger = logging.getLogger(__name__)
+        
+        # Initialize grouper if metadata is provided
+        self.grouper = None
+        if agent_metadata:
+            self.grouper = EmbodimentGrouper(agent_metadata)
+            self.groups = self.grouper.get_groups()
+        else:
+            self.groups = {"default": list(agents.keys())}
 
     def joint_distributional_value_function(self, joint_trajectories: Dict[str, np.ndarray]) -> float:
         """
@@ -45,24 +55,37 @@ class OMADOrchestrator:
     def coordinate(self, agent_trajectories: Dict[str, np.ndarray]) -> np.ndarray:
         """
         Consensus mechanism to find a coordinated reasoning path.
-        Returns a 'consensus' trajectory.
+        Coordinates within groups first, then across groups.
         """
-        # Step 1: Apply entropy-augmented objectives to evaluate candidates
-        scores = {}
-        for agent_id, traj in agent_trajectories.items():
-            base_value = self.joint_distributional_value_function({agent_id: traj})
-            entropy_bonus = self.calculate_entropy_bonus(traj)
-            scores[agent_id] = base_value + entropy_bonus
-            self.logger.debug(f"Agent {agent_id} score: {scores[agent_id]} (Entropy: {entropy_bonus})")
+        if not agent_trajectories:
+            return np.array([])
 
-        # Step 2: Simple weighted consensus (Softmax over scores)
-        # For simplicity, just averaging the trajectories for now as the consensus
-        all_trajs = list(agent_trajectories.values())
-        if not all_trajs:
+        group_consensuses = []
+        
+        # Step 1: Intra-group coordination
+        for group_name, agent_ids in self.groups.items():
+            group_trajs = [agent_trajectories[aid] for aid in agent_ids if aid in agent_trajectories]
+            if not group_trajs:
+                continue
+                
+            # Score trajectories within group
+            group_scores = []
+            for traj in group_trajs:
+                base_value = self.joint_distributional_value_function({"temp": traj})
+                entropy_bonus = self.calculate_entropy_bonus(traj)
+                group_scores.append(base_value + entropy_bonus)
+            
+            # Simple intra-group consensus: average of trajectories in group
+            group_consensus = np.mean(group_trajs, axis=0)
+            group_consensuses.append(group_consensus)
+            self.logger.debug(f"Group {group_name} coordinated consensus calculated.")
+
+        # Step 2: Inter-group coordination (Global consensus)
+        if not group_consensuses:
             return np.array([])
             
-        consensus = np.mean(all_trajs, axis=0)
-        return consensus
+        global_consensus = np.mean(group_consensuses, axis=0)
+        return global_consensus
 
     def step(self, env_context: str) -> Dict[str, np.ndarray]:
         """
