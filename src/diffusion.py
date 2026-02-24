@@ -40,3 +40,9 @@ class DiffusionPolicy:
         """
         # TODO: Implement online update logic
         pass
+
+    def get_trajectories(self, conditioning_context, num_samples=3):
+        """
+        Generates multiple reasoning trajectories for coordination.
+        """
+        return [self.sample_action(conditioning_context) for _ in range(num_samples)]

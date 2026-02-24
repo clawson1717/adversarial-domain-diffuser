@@ -1,6 +1,7 @@
 import logging
 from typing import List, Dict, Any, Optional
 from src.reasoning_agent import DomainReasoningAgent
+from src.omad import OMADOrchestrator
 
 class AgentEnvironment:
     """
@@ -8,9 +9,10 @@ class AgentEnvironment:
     Uses a blackboard architecture where agents can share their reasoning.
     """
 
-    def __init__(self):
+    def __init__(self, orchestrator: Optional[OMADOrchestrator] = None):
         self.agents: List[DomainReasoningAgent] = []
         self.blackboard: List[Dict[str, Any]] = []
+        self.orchestrator = orchestrator
         self.logger = logging.getLogger(__name__)
 
     def register_agent(self, agent: DomainReasoningAgent):
